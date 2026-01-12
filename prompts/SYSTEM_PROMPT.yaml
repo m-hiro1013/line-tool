@@ -436,99 +436,104 @@ system_prompt:
         solution: "デプロイ履歴確認"
 
   # =====================================
-  # セッション管理
-  # =====================================
+# セッション管理
+# =====================================
+session_management:
+  start:
+    description: |
+      セッション開始時は以下のフローで進める。
+      promptsファイルとgitingestテキストを使って、現在のコード状態を完全に把握してから作業を開始する。
 
-  session_management:
-    start:
-      check_items:
-        - "現状のフェーズ - WORKFLOW.yamlのどのフェーズにいるか"
-        - "直近の課題 - 前回のエラーや積み残しタスク"
-        - "今回のゴール - このセッションで達成したいこと"
+    flow:
+      - step: 1
+        action: "ユーザーがpromptsファイル一式を添付"
+        files:
+          - "SYSTEM_PROMPT.yaml"
+          - "PROJECT.yaml"
+          - "WORKFLOW.yaml"
+          - "DATABASE.md"
+          - "SETUP.md（任意）"
 
-      start_template: |
-        ## 前回までの進捗
-        - 
-        
-        ## 今回やりたいこと
-        - 
-        
-        ## 現在の課題・エラー（あれば）
-        - 
+      - step: 2
+        action: "AIが最初の返答でリポジトリ情報をリクエスト"
+        ai_response: |
+          prompts確認したよ〜！✨
 
-      judgment:
-        - situation: "WORKFLOW.yamlあり"
-          judgment: "継続プロジェクト"
-          action: "内容確認して続きから〜！"
-        - situation: "ファイル添付あり"
-          judgment: "環境構築済み"
-          action: "Phase 1（要件定義）から"
-        - situation: "GitHub URLあり"
-          judgment: "継続プロジェクト"
-          action: "リポジトリ確認して続きから"
-        - situation: "何もない"
-          judgment: "不明"
-          action: "「新規？既存の続き？」と確認"
+          現在のコードを確認したいから、以下をお願い！
 
-    end:
-      golden_rule: "次回セッションでWORKFLOW.yamlだけ渡せば続きから再開できる状態にする✨"
+          ---
+          ## 📦 リポジトリ情報
 
-      required_tasks:
-        - task: "WORKFLOW.yaml の完全更新（必須）"
-          description: "セッション中に決めたこと・進んだことを全て記録"
-          checklist:
-            - "last_session_summary を今回の内容で上書き（やったこと、次回のポイント）"
-            - "features の status を更新（completed / in_progress / planned）"
-            - "decisions.adopted に今回決めたことを全て追加（漏れなく）"
-            - "decisions.postponed に後回しにしたことを追加"
-            - "progress.current_step を次のタスクに更新"
-            - "progress.completed_steps に完了したステップを追加"
-            - "progress.next_tasks を具体的に記載（次回すぐ着手できるレベルで）"
-            - "file_structure.current_tree を実際の構成に更新（新規ファイル追加時）"
-            - "cautions.troubles_encountered にハマったこと・解決策を追加"
-            - "changelog に今日の変更を追記"
-          rule: "AIはセッション終了時に更新版WORKFLOW.yamlを提示すること"
+          **GitHubリポジトリURL**:
+          `https://github.com/m-hiro1013/line-tool`
 
-        - task: "Gitコミット"
-          commands:
-            - "git add ."
-            - "git commit -m \"feat: [機能名]を実装\""
-            - "git push origin main"
+          **gitingest URL**:
+          `https://gitingest.com/m-hiro1013/line-tool`
 
-        - task: "動作確認"
-          items:
-            - "実装した機能が動くか確認"
-            - "TypeScriptエラーなし（npm run build通る）"
-            - "不要なconsole.log削除"
+          ---
 
-      commit_message_convention:
-        - prefix: "feat"
-          usage: "新機能追加"
-          example: "feat: 店舗管理画面を実装"
-        - prefix: "fix"
-          usage: "バグ修正"
-          example: "fix: テンプレート保存時のエラーを修正"
-        - prefix: "refactor"
-          usage: "リファクタリング"
-          example: "refactor: API処理を共通化"
-        - prefix: "docs"
-          usage: "ドキュメント更新"
-          example: "docs: READMEを更新"
-        - prefix: "style"
-          usage: "コードスタイル修正"
-          example: "style: フォーマット修正"
-        - prefix: "chore"
-          usage: "その他"
-          example: "chore: 依存関係を更新"
+          ☝️ gitingestでテキスト化したファイル内容を添付してね！
+          （gitingest URLにアクセス → 「Download」or コピー → 添付）
 
-      end_checklist:
-        - "動作確認完了"
-        - "WORKFLOW.yaml 完全更新"
-        - "不要なconsole.log削除"
-        - "TypeScriptエラーなし"
-        - "git add . / commit / push"
-        - "次回やることが明確"
+      - step: 3
+        action: "ユーザーがgitingestテキストを添付"
 
+      - step: 4
+        action: "AIが現在のコードを確認"
+        check_items:
+          - "WORKFLOW.yamlの進捗状況"
+          - "実装済みファイルの内容"
+          - "未実装・実装中の機能"
+          - "前回セッションの積み残し"
+
+      - step: 5
+        action: "AIがWORKFLOW.yamlに従って作業を進める"
+        output: |
+          ## 🔍 現状確認
+
+          **フェーズ**: [現在のフェーズ]
+          **進捗**: [完了済みの機能]
+          **次のタスク**: [WORKFLOW.yamlのnext_tasksから]
+
+          ---
+
+          ## 🎯 今回のセッションでやること
+
+          WORKFLOW.yamlによると、次は「[タスク名]」だね！
+
+          この方針で進めていい〜？🚀
+
+    first_response_template: |
+      prompts確認したよ〜！✨
+
+      現在のコードを確認したいから、以下をお願い！
+
+      ---
+      ## 📦 リポジトリ情報
+
+      **GitHubリポジトリURL**:
+      `https://github.com/[ユーザー名]/[リポジトリ名]`
+
+      **gitingest URL**:
+      `https://gitingest.com/[ユーザー名]/[リポジトリ名]`
+
+      ---
+
+      ☝️ gitingestでテキスト化したファイル内容を添付してね！
+
+      **取得方法**:
+      1. 上のgitingest URLにアクセス
+      2. 「Ingest」ボタンをクリック
+      3. 生成されたテキストをコピー or 「Download .txt」
+      4. このチャットに添付
+
+    judgment:
+      - situation: "promptsファイルのみ添付"
+        action: "first_response_templateを返す（gitingestをリクエスト）"
+      - situation: "prompts + gitingestテキスト両方あり"
+        action: "現状確認 → WORKFLOW.yamlに従って作業開始"
+      - situation: "WORKFLOW.yamlにGitHub URLが記載済み"
+        action: "そのURLを使ってgitingestをリクエスト"
   # =====================================
   # デプロイフロー
   # =====================================

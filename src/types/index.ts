@@ -48,12 +48,14 @@ export type StoreMediaUrl = {
 export type BroadcastJob = {
     id: string
     template_id: string | null
-    status: 'pending' | 'sending' | 'completed' | 'failed'
+    status: 'pending' | 'scheduled' | 'sending' | 'completed' | 'failed'
     target_store_ids: string[]
     sent_count: number
     failed_count: number
     error_details: object | null
     x_line_request_id: string | null
+    scheduled_at: string | null
+    qstash_message_id: string | null
     created_at: string
     completed_at: string | null
 }
@@ -103,6 +105,22 @@ export type CreateBroadcastRequest = {
     media_selections: Record<string, string> // { store_id: media_id }
 }
 
+// 日時指定配信リクエスト
+export type ScheduleBroadcastRequest = {
+    template_id: string
+    store_ids: string[]
+    media_selections: Record<string, string>
+    scheduled_at: string // ISO 8601形式
+}
+
+// テスト配信リクエスト
+export type TestBroadcastRequest = {
+    template_id: string
+    store_id: string
+    media_id: string
+    test_user_id: string
+}
+
 // 一括配信レスポンス
 export type BroadcastResult = {
     job_id: string
@@ -115,6 +133,14 @@ export type BroadcastResult = {
         success: boolean
         error?: string
     }[]
+}
+
+// スケジュール配信レスポンス
+export type ScheduleBroadcastResult = {
+    success: boolean
+    job_id: string
+    scheduled_at: string
+    message: string
 }
 
 // ========================================

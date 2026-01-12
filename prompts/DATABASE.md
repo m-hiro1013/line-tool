@@ -1,109 +1,4 @@
--- ========================================
--- 店舗マスタ
--- ========================================
-CREATE TABLE stores (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  line_channel_id TEXT,
-  line_channel_secret TEXT,
-  line_channel_access_token TEXT NOT NULL,
-  webhook_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
-);
-
--- ========================================
--- Flex Messageテンプレート
--- ========================================
-CREATE TABLE templates (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  json_content JSONB NOT NULL,
-  thumbnail_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
-);
-
--- ========================================
--- 媒体マスタ
--- ========================================
-CREATE TABLE media (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
-);
-
--- ========================================
--- 店舗×媒体URL
--- ========================================
-CREATE TABLE store_media_urls (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
-  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,
-  url TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  UNIQUE(store_id, media_id)
-);
-
--- ========================================
--- 配信ジョブ（履歴管理）
--- ========================================
-CREATE TABLE broadcast_jobs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  target_store_ids UUID[] NOT NULL,
-  sent_count INTEGER DEFAULT 0,
-  failed_count INTEGER DEFAULT 0,
-  error_details JSONB,
-  x_line_request_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  completed_at TIMESTAMPTZ
-);
-
--- ========================================
--- updated_at自動更新用のトリガー関数
--- ========================================
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-
-$$ language 'plpgsql';
-
--- stores
-CREATE TRIGGER update_stores_updated_at
-  BEFORE UPDATE ON stores
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- templates
-CREATE TRIGGER update_templates_updated_at
-  BEFORE UPDATE ON templates
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- store_media_urls
-CREATE TRIGGER update_store_media_urls_updated_at
-  BEFORE UPDATE ON store_media_urls
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-実行して「Success」と表示されたら教えてください！
-
-Notionに保存
-DATABASE.md
-28.80 KB
-テーブル作成完了したら 以下を参考に このプロジェクト固有の database.mdを作成してね
-いいですね！テーブル作成完了したんですね。
-
-では、このLINE運用効率化ツール用の database.md を作成しますね。
-
-📁 対象ファイル: DATABASE.md（プロジェクトルートに新規作成） 📝 変更内容: 新規作成
-
-Copy# =====================================
+# =====================================
 # 🗄️ DATABASE.md
 # =====================================
 #
@@ -132,7 +27,7 @@ Copy# =====================================
 | 項目 | 値 |
 |------|-----|
 | データベース | Supabase (PostgreSQL) |
-| 最終更新日 | 2026-01-09 |
+| 最終更新日 | 2026-01-12 |
 | 更新者 | - |
 
 ---
@@ -258,16 +153,20 @@ Copy# =====================================
 | failed_count | INTEGER | DEFAULT 0 | 失敗数 |
 | error_details | JSONB | | エラー詳細 |
 | x_line_request_id | TEXT | | LINE問い合わせ用ID |
-| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | 配信日時 |
+| scheduled_at | TIMESTAMPTZ | | 配信予約日時 |
+| qstash_message_id | TEXT | | QStashメッセージID |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | 作成日時 |
 | completed_at | TIMESTAMPTZ | | 完了日時 |
 
 **RLSポリシー**: なし（フェーズ1は認証なし）
 
 **備考**:
-- status: `pending` → `sending` → `completed` / `failed`
+- status: `pending` → `scheduled` → `sending` → `completed` / `failed`
 - テンプレート削除時もジョブ履歴は残る（SET NULL）
 - error_detailsには店舗ごとのエラー情報をJSON形式で保存
 - x_line_request_idはLINEサポートへの問い合わせ時に使用
+- scheduled_at: 日時指定配信の場合に設定
+- qstash_message_id: QStashでスケジュールしたメッセージのID（キャンセル用）
 
 ---
 
@@ -283,7 +182,7 @@ Copy# =====================================
 
 ### リレーション図
 
-stores media (店舗マスタ) (媒体マスタ) │ │ │ id │ id │ │ └──────────┬───────────────┘ │ ▼ store_media_urls (店舗×媒体URL)
+stores media (店舗マスタ) (媒体マスタ) │ │ │ id │ id │ │ └──────────┬───────────────────┘ │ ▼ store_media_urls (店舗×媒体URL)
 
 templates ─────────────► broadcast_jobs (テンプレート) (配信ジョブ) template_id
 
@@ -329,6 +228,7 @@ templates ─────────────► broadcast_jobs (テンプ�
 |------|---------|------|
 | 2026-01-09 | 初期5テーブル作成（stores, templates, media, store_media_urls, broadcast_jobs） | 初期設計 |
 | 2026-01-09 | update_updated_at_column関数、各テーブルのトリガー作成 | updated_at自動更新対応 |
+| 2026-01-12 | broadcast_jobsにscheduled_at, qstash_message_idカラム追加 | 日時指定配信対応 |
 
 ---
 
@@ -339,3 +239,119 @@ templates ─────────────► broadcast_jobs (テンプ�
 - テンプレートのjson_contentは、LINE Flex Message Simulatorで作成したJSONをそのまま保存可能
 - `{{media_url}}` などのプレースホルダーは配信時にstore_media_urlsの値で置換
 - 将来的に `{{store_name}}` など他の変数も対応予定（store_variablesテーブル追加）
+- 日時指定配信はUpstash QStashを使用してスケジューリング
+
+---
+
+## 📜 SQL（テーブル作成用）
+
+新規環境でテーブルを作成する場合は、以下のSQLをSupabase SQL Editorで実行してください。
+
+```sql
+-- ========================================
+-- 店舗マスタ
+-- ========================================
+CREATE TABLE stores (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  line_channel_id TEXT,
+  line_channel_secret TEXT,
+  line_channel_access_token TEXT NOT NULL,
+  webhook_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- ========================================
+-- Flex Messageテンプレート
+-- ========================================
+CREATE TABLE templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  json_content JSONB NOT NULL,
+  thumbnail_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- ========================================
+-- 媒体マスタ
+-- ========================================
+CREATE TABLE media (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- ========================================
+-- 店舗×媒体URL
+-- ========================================
+CREATE TABLE store_media_urls (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  UNIQUE(store_id, media_id)
+);
+
+-- ========================================
+-- 配信ジョブ（履歴管理）
+-- ========================================
+CREATE TABLE broadcast_jobs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  target_store_ids UUID[] NOT NULL,
+  sent_count INTEGER DEFAULT 0,
+  failed_count INTEGER DEFAULT 0,
+  error_details JSONB,
+  x_line_request_id TEXT,
+  scheduled_at TIMESTAMPTZ,
+  qstash_message_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  completed_at TIMESTAMPTZ
+);
+
+-- ========================================
+-- updated_at自動更新用のトリガー関数
+-- ========================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+
+$$ language 'plpgsql';
+
+-- stores
+CREATE TRIGGER update_stores_updated_at
+  BEFORE UPDATE ON stores
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- templates
+CREATE TRIGGER update_templates_updated_at
+  BEFORE UPDATE ON templates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- store_media_urls
+CREATE TRIGGER update_store_media_urls_updated_at
+  BEFORE UPDATE ON store_media_urls
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+📜 SQL（カラム追加用 - 2026-01-12）
+既存環境に日時指定配信用のカラムを追加する場合：
+
+Copy-- broadcast_jobsテーブルにカラム追加
+ALTER TABLE broadcast_jobs 
+ADD COLUMN scheduled_at TIMESTAMPTZ,
+ADD COLUMN qstash_message_id TEXT;
+
+-- statusの'scheduled'を許可するためコメント追加（参考用）
+COMMENT ON COLUMN broadcast_jobs.status IS 'pending, scheduled, sending, completed, failed';
+
+---
