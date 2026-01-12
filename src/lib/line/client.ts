@@ -29,8 +29,8 @@ export async function pushFlexMessage(
             ],
         })
 
-        console.log('LINE送信成功 - X-Line-Request-Id:', result.xLineRequestId)
-        return { success: true, requestId: result.xLineRequestId }
+        console.log('LINE送信成功:', result)
+        return { success: true, requestId: JSON.stringify(result) }
     } catch (error) {
         if (error instanceof HTTPFetchError) {
             console.error('LINE API Error:', error.status, error.body)
@@ -61,8 +61,8 @@ export async function broadcastFlexMessage(
             ],
         })
 
-        console.log('LINE配信成功 - X-Line-Request-Id:', result.xLineRequestId)
-        return { success: true, requestId: result.xLineRequestId }
+        console.log('LINE配信成功:', result)
+        return { success: true, requestId: JSON.stringify(result) }
     } catch (error) {
         if (error instanceof HTTPFetchError) {
             console.error('LINE API Error:', error.status, error.body)
