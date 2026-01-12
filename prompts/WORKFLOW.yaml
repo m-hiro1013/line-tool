@@ -15,8 +15,8 @@
 # =====================================
 
 workflow:
-  version: "1.0"
-  last_updated: "2026-01-10"
+  version: "1.1"
+  last_updated: "2026-01-12"
 
   # =====================================
   # 前回セッションのサマリー
@@ -24,24 +24,41 @@ workflow:
 
   last_session_summary: |
     【今回のセッションでやったこと】
-    1. 基盤実装完了
-       - src/lib/supabase/client.ts（ブラウザ用Supabaseクライアント）
-       - src/lib/supabase/server.ts（サーバー用Supabaseクライアント）
-       - src/lib/line/client.ts（LINE SDKラッパー）
-       - src/types/index.ts（型定義）
-       - Supabase接続テスト（/api/health）
+    1. shadcn/ui初期化・コンポーネント追加
+       - button, card, input, label, table, dialog, form, select, textarea, toast
+       - src/lib/utils.ts 生成
+       - src/hooks/use-toast.ts 生成
 
-    2. 全API実装完了
-       - 店舗管理API（/api/stores）
-       - テンプレート管理API（/api/templates）
-       - 媒体管理API（/api/media）
-       - 店舗×媒体URL管理API（/api/store-media-urls）
-       - 一括配信API（/api/broadcast/create）
-       - 配信履歴API（/api/broadcast/jobs）
+    2. 管理画面（フロントエンド）全画面実装完了
+       - src/components/layout/sidebar.tsx（サイドバーナビゲーション）
+       - src/app/(dashboard)/layout.tsx（ダッシュボード共通レイアウト）
+       - src/app/(dashboard)/page.tsx（ダッシュボードトップ）
+       - src/app/(dashboard)/stores/page.tsx（店舗管理画面）
+       - src/app/(dashboard)/templates/page.tsx（テンプレート管理画面）
+       - src/app/(dashboard)/media/page.tsx（媒体管理画面）
+       - src/app/(dashboard)/store-media-urls/page.tsx（店舗×媒体URL管理画面）
+       - src/app/(dashboard)/broadcast/page.tsx（配信作成画面）
+
+    3. テスト配信・日時指定配信機能実装
+       - src/app/api/broadcast/test/route.ts（テスト配信API - pushMessage）
+       - src/app/api/broadcast/schedule/route.ts（日時指定配信スケジュールAPI）
+       - src/app/api/broadcast/execute/route.ts（QStashから呼び出される実行API）
+       - Upstash QStash導入・設定
+       - broadcast_jobsテーブルにscheduled_at, qstash_message_idカラム追加
+
+    4. テスト配信動作確認完了
+       - ローカル環境でテスト配信成功（pushMessageで自分だけに送信）
+
+    5. デプロイ準備
+       - GitHub CLI導入・認証完了
+       - GitHubリポジトリにpush完了（m-hiro1013/line-tool）
+       - Vercelデプロイ中
 
     【次回リスタート時のポイント】
-    - shadcn/ui初期化から開始
-    - その後、管理画面（フロントエンド）の実装へ
+    - Vercelデプロイ完了確認
+    - NEXT_PUBLIC_APP_URLに本番URLを設定
+    - 日時指定配信の本番環境テスト
+    - 必要に応じてWORKFLOW.yaml最終更新
 
   # =====================================
   # 1. 実装中・計画中の機能
@@ -104,13 +121,10 @@ workflow:
           - "GET /api/broadcast/jobs"
           - "GET /api/broadcast/jobs/[id]"
 
-    in_progress: []
-
-    planned:
       - id: "F007"
         name: "管理画面（フロントエンド）"
-        status: "planned"
-        priority: 1
+        status: "completed"
+        completed_at: "2026-01-12"
         description: "ダッシュボード、各管理画面の実装"
         screens:
           - "ダッシュボード（/）"
@@ -119,6 +133,42 @@ workflow:
           - "媒体管理（/media）"
           - "店舗×媒体URL（/store-media-urls）"
           - "配信作成（/broadcast）"
+
+      - id: "F008"
+        name: "テスト配信機能"
+        status: "completed"
+        completed_at: "2026-01-12"
+        description: "pushMessageで特定ユーザーにのみ配信（本番配信前の確認用）"
+        endpoints:
+          - "POST /api/broadcast/test"
+
+      - id: "F009"
+        name: "日時指定配信機能"
+        status: "completed"
+        completed_at: "2026-01-12"
+        description: "Upstash QStashを使った予約配信"
+        endpoints:
+          - "POST /api/broadcast/schedule"
+          - "POST /api/broadcast/execute（QStashから呼び出し）"
+
+    in_progress:
+      - id: "F010"
+        name: "Vercelデプロイ"
+        status: "in_progress"
+        description: "本番環境へのデプロイ・動作確認"
+
+    planned:
+      - id: "F011"
+        name: "配信履歴画面"
+        status: "planned"
+        priority: 2
+        description: "配信ジョブの履歴一覧・詳細表示画面"
+
+      - id: "F012"
+        name: "配信キャンセル機能"
+        status: "planned"
+        priority: 3
+        description: "スケジュール済み配信のキャンセル（QStash messageId使用）"
 
   # =====================================
   # 2. 決定事項の記録
@@ -171,30 +221,61 @@ workflow:
         reason: "実行時には問題なく動作するため、開発効率を優先"
         date: "2026-01-10"
 
+      - id: "D009"
+        idea: "配信は即時配信ではなく「テスト配信→日時指定配信」の2段階"
+        reason: "誤配信防止、本番配信前に内容確認できる安心設計"
+        date: "2026-01-12"
+
+      - id: "D010"
+        idea: "日時指定配信にUpstash QStashを使用"
+        reason: "サーバーレス環境でのスケジュール配信に特化、実装がシンプル"
+        date: "2026-01-12"
+
+      - id: "D011"
+        idea: "テストユーザーIDを環境変数で管理（NEXT_PUBLIC_LINE_TEST_USER_ID）"
+        reason: "テスト配信のデフォルト値として使用、毎回入力する手間を省く"
+        date: "2026-01-12"
+
     postponed:
       - id: "P001"
         idea: "ESLint導入"
         trigger: "必要になったら後から追加"
 
       - id: "P002"
-        idea: "shadcn/ui導入"
-        trigger: "フロントエンド実装開始時（次回）"
-
-      - id: "P003"
         idea: "Webhook受信機能"
         trigger: "フェーズ2開始時"
 
-      - id: "P004"
+      - id: "P003"
         idea: "リッチメニュー管理機能"
         trigger: "フェーズ2開始時"
 
-      - id: "P005"
+      - id: "P004"
         idea: "自動応答機能"
         trigger: "フェーズ2開始時"
 
-      - id: "P006"
+      - id: "P005"
         idea: "セグメント配信・分析機能"
         trigger: "フェーズ3開始時"
+
+      - id: "P006"
+        idea: "チャネルID活用"
+        trigger: "複数チャネル管理時の識別・管理画面での表示"
+        note: "現在は任意項目として保存のみ"
+
+      - id: "P007"
+        idea: "チャネルシークレット活用"
+        trigger: "フェーズ2（Webhook署名検証時）"
+        note: "現在は任意項目として保存のみ"
+
+      - id: "P008"
+        idea: "Webhook URL活用"
+        trigger: "フェーズ2（LINE Developers設定との同期確認）"
+        note: "現在は任意項目として保存のみ"
+
+      - id: "P009"
+        idea: "サムネイルURL活用"
+        trigger: "UI改善時（テンプレート一覧のカード形式表示）"
+        note: "現在は任意項目として保存のみ"
 
   # =====================================
   # 3. 現在の進捗
@@ -204,12 +285,12 @@ workflow:
     current_phase:
       id: "phase1"
       name: "Flex Message一括配信システム（MVP）"
-      status: "in_progress"
+      status: "almost_complete"
 
     current_step:
-      name: "フロントエンド実装"
-      status: "not_started"
-      description: "shadcn/ui導入 → 管理画面実装"
+      name: "Vercelデプロイ・本番確認"
+      status: "in_progress"
+      description: "本番環境へのデプロイと日時指定配信の動作確認"
 
     completed_steps:
       - name: "環境構築"
@@ -240,14 +321,42 @@ workflow:
           - "一括配信API"
           - "配信履歴API"
 
+      - name: "フロントエンド実装"
+        completed_at: "2026-01-12"
+        items:
+          - "shadcn/ui初期化・コンポーネント追加"
+          - "サイドバーナビゲーション"
+          - "ダッシュボード共通レイアウト"
+          - "ダッシュボード画面"
+          - "店舗管理画面"
+          - "テンプレート管理画面"
+          - "媒体管理画面"
+          - "店舗×媒体URL管理画面"
+          - "配信作成画面"
+
+      - name: "テスト配信・日時指定配信"
+        completed_at: "2026-01-12"
+        items:
+          - "テスト配信API（pushMessage）"
+          - "日時指定配信スケジュールAPI"
+          - "QStash実行API"
+          - "Upstash QStash導入"
+          - "broadcast_jobsテーブルにカラム追加"
+          - "型定義更新"
+          - "配信画面UI更新"
+
+      - name: "GitHub連携"
+        completed_at: "2026-01-12"
+        items:
+          - "GitHub CLI導入・認証"
+          - "リポジトリ作成（m-hiro1013/line-tool）"
+          - "初回push完了"
+
     next_tasks:
-      - "shadcn/ui初期化"
-      - "共通レイアウト作成"
-      - "ダッシュボード画面"
-      - "店舗管理画面"
-      - "テンプレート管理画面"
-      - "媒体管理画面"
-      - "配信作成画面"
+      - "Vercelデプロイ完了確認"
+      - "NEXT_PUBLIC_APP_URLに本番URLを設定"
+      - "本番環境での動作確認"
+      - "日時指定配信の本番テスト"
 
   # =====================================
   # 4. ファイル構成（勉強用解説付き）
@@ -259,198 +368,132 @@ workflow:
       │
       ├── 📄 .env.local
       │   └── 環境変数ファイル（Git管理外）
-      │       Supabase URL、APIキー、LINE認証情報などの秘密情報を保存
-      │       NEXT_PUBLIC_プレフィックス = ブラウザで使える
-      │       プレフィックスなし = サーバーサイドのみ（安全）
+      │       - NEXT_PUBLIC_SUPABASE_URL
+      │       - NEXT_PUBLIC_SUPABASE_ANON_KEY
+      │       - QSTASH_TOKEN
+      │       - QSTASH_CURRENT_SIGNING_KEY
+      │       - QSTASH_NEXT_SIGNING_KEY
+      │       - NEXT_PUBLIC_LINE_TEST_USER_ID
+      │       - NEXT_PUBLIC_APP_URL
       │
       ├── 📄 .gitignore
       │   └── Gitで追跡しないファイル一覧
-      │       node_modules/、.env.local、.next/ などを指定
       │
-      ├── 📄 next.config.ts
+      ├── 📄 components.json
+      │   └── shadcn/uiの設定ファイル
+      │
+      ├── 📄 next.config.mjs
       │   └── Next.jsの設定ファイル
-      │       リダイレクト、環境変数、画像ドメインなどを設定
       │
       ├── 📄 package.json
       │   └── プロジェクトの依存関係・スクリプト定義
-      │       npm install で使うライブラリ一覧
-      │       npm run dev / build / start などのコマンド定義
+      │       - @line/bot-sdk
+      │       - @supabase/ssr, @supabase/supabase-js
+      │       - @upstash/qstash
+      │       - tailwindcss, shadcn/ui関連
       │
       ├── 📄 tsconfig.json
       │   └── TypeScriptの設定ファイル
-      │       @/* のパスエイリアス設定など
       │
       ├── 📄 tailwind.config.ts
       │   └── Tailwind CSSの設定ファイル
-      │       カラーパレット、フォント、カスタムクラスなど
       │
       ├── 📄 postcss.config.mjs
-      │   └── PostCSSの設定（Tailwindが使う）
+      │   └── PostCSSの設定
       │
       ├── 📁 prompts/
-      │   └── AIアシスタント用のドキュメント類
-      │   │
-      │   ├── 📄 DATABASE.md
-      │   │   └── テーブル定義書
-      │   │       DBの設計を記録。テーブル追加時は必ず更新！
-      │   │
-      │   ├── 📄 WORKFLOW.yaml ← このファイル
-      │   │   └── 進捗・決定事項・ファイル構成
-      │   │       セッション終了時に必ず更新！
-      │   │
-      │   ├── 📄 SYSTEM_PROMPT.yaml
-      │   │   └── 開発ルール・AIの振る舞い定義
-      │   │
-      │   ├── 📄 PROJECT.yaml
-      │   │   └── プロジェクト定義・API設計・画面構成
-      │   │
-      │   └── 📄 SETUP.md
-      │       └── 環境構築手順（参照用）
+      │   ├── 📄 DATABASE.md - テーブル定義書
+      │   ├── 📄 WORKFLOW.yaml - 進捗・決定事項（このファイル）
+      │   ├── 📄 SYSTEM_PROMPT.yaml - 開発ルール・AIの振る舞い
+      │   ├── 📄 PROJECT.md - プロジェクト定義・API設計
+      │   └── 📄 SETUP.md - 環境構築手順
       │
       └── 📁 src/
-          └── ソースコード本体
           │
           ├── 📁 app/
-          │   └── Next.js App Router のメインディレクトリ
-          │       ファイルベースルーティング（フォルダ構造 = URL構造）
+          │   ├── 📄 layout.tsx - ルートレイアウト
+          │   ├── 📄 globals.css - グローバルCSS
           │   │
-          │   ├── 📄 layout.tsx
-          │   │   └── ルートレイアウト（全ページ共通のHTML構造）
-          │   │       <html><body>タグ、フォント、メタデータなど
-          │   │
-          │   ├── 📄 page.tsx
-          │   │   └── トップページ（ / にアクセスした時の画面）
-          │   │
-          │   ├── 📄 globals.css
-          │   │   └── グローバルCSS（Tailwindの@tailwind指定など）
+          │   ├── 📁 (dashboard)/
+          │   │   ├── 📄 layout.tsx - ダッシュボード共通レイアウト（サイドバー）
+          │   │   ├── 📄 page.tsx - ダッシュボードトップ（/）
+          │   │   ├── 📁 stores/
+          │   │   │   └── 📄 page.tsx - 店舗管理画面
+          │   │   ├── 📁 templates/
+          │   │   │   └── 📄 page.tsx - テンプレート管理画面
+          │   │   ├── 📁 media/
+          │   │   │   └── 📄 page.tsx - 媒体管理画面
+          │   │   ├── 📁 store-media-urls/
+          │   │   │   └── 📄 page.tsx - 店舗×媒体URL管理画面
+          │   │   └── 📁 broadcast/
+          │   │       └── 📄 page.tsx - 配信作成画面（テスト配信・日時指定配信）
           │   │
           │   └── 📁 api/
-          │       └── APIルート（バックエンドのエンドポイント）
-          │           /api/xxx でアクセスできるサーバーサイド処理
-          │       │
           │       ├── 📁 health/
-          │       │   └── 📄 route.ts
-          │       │       └── GET /api/health
-          │       │           ヘルスチェック＆DB接続確認用
-          │       │
+          │       │   └── 📄 route.ts - ヘルスチェック
           │       ├── 📁 stores/
-          │       │   ├── 📄 route.ts
-          │       │   │   └── GET /api/stores - 店舗一覧取得
-          │       │   │       POST /api/stores - 店舗新規登録
-          │       │   │
+          │       │   ├── 📄 route.ts - GET/POST
           │       │   └── 📁 [id]/
-          │       │       └── 📄 route.ts
-          │       │           └── GET /api/stores/[id] - 店舗詳細取得
-          │       │               PUT /api/stores/[id] - 店舗更新
-          │       │               DELETE /api/stores/[id] - 店舗削除
-          │       │           ※ [id] = 動的ルート。URLのidパラメータを取得できる
-          │       │
+          │       │       └── 📄 route.ts - GET/PUT/DELETE
           │       ├── 📁 templates/
-          │       │   ├── 📄 route.ts
-          │       │   │   └── GET/POST テンプレート一覧・新規登録
-          │       │   │
+          │       │   ├── 📄 route.ts - GET/POST
           │       │   └── 📁 [id]/
-          │       │       └── 📄 route.ts
-          │       │           └── GET/PUT/DELETE テンプレート詳細・更新・削除
-          │       │
+          │       │       └── 📄 route.ts - GET/PUT/DELETE
           │       ├── 📁 media/
-          │       │   ├── 📄 route.ts
-          │       │   │   └── GET/POST 媒体一覧・新規登録
-          │       │   │
+          │       │   ├── 📄 route.ts - GET/POST
           │       │   └── 📁 [id]/
-          │       │       └── 📄 route.ts
-          │       │           └── DELETE 媒体削除
-          │       │
+          │       │       └── 📄 route.ts - DELETE
           │       ├── 📁 store-media-urls/
-          │       │   ├── 📄 route.ts
-          │       │   │   └── GET 店舗×媒体URL一覧（?store_id=xxxでフィルタ可）
-          │       │   │       POST 店舗×媒体URL登録（UPSERT）
-          │       │   │
+          │       │   ├── 📄 route.ts - GET/POST（UPSERT）
           │       │   └── 📁 [id]/
-          │       │       └── 📄 route.ts
-          │       │           └── DELETE 店舗×媒体URL削除
-          │       │
+          │       │       └── 📄 route.ts - DELETE
           │       └── 📁 broadcast/
           │           ├── 📁 create/
-          │           │   └── 📄 route.ts
-          │           │       └── POST /api/broadcast/create
-          │           │           Flex Message一括生成・配信のメイン処理🔥
-          │           │           テンプレートの{{media_url}}を店舗ごとに置換して配信
-          │           │
+          │           │   └── 📄 route.ts - POST（即時一括配信）
+          │           ├── 📁 test/
+          │           │   └── 📄 route.ts - POST（テスト配信 - pushMessage）
+          │           ├── 📁 schedule/
+          │           │   └── 📄 route.ts - POST（日時指定配信スケジュール）
+          │           ├── 📁 execute/
+          │           │   └── 📄 route.ts - POST（QStashから呼び出し実行）
           │           └── 📁 jobs/
-          │               ├── 📄 route.ts
-          │               │   └── GET /api/broadcast/jobs - 配信履歴一覧
-          │               │
+          │               ├── 📄 route.ts - GET（配信履歴一覧）
           │               └── 📁 [id]/
-          │                   └── 📄 route.ts
-          │                       └── GET /api/broadcast/jobs/[id] - 配信詳細
+          │                   └── 📄 route.ts - GET（配信詳細）
+          │
+          ├── 📁 components/
+          │   ├── 📁 layout/
+          │   │   └── 📄 sidebar.tsx - サイドバーナビゲーション
+          │   └── 📁 ui/
+          │       ├── 📄 button.tsx
+          │       ├── 📄 card.tsx
+          │       ├── 📄 dialog.tsx
+          │       ├── 📄 form.tsx
+          │       ├── 📄 input.tsx
+          │       ├── 📄 label.tsx
+          │       ├── 📄 select.tsx
+          │       ├── 📄 table.tsx
+          │       ├── 📄 textarea.tsx
+          │       ├── 📄 toast.tsx
+          │       └── 📄 toaster.tsx
+          │
+          ├── 📁 hooks/
+          │   └── 📄 use-toast.ts - トースト通知フック
           │
           ├── 📁 lib/
-          │   └── ライブラリ・ユーティリティ関数
-          │       外部サービスとの接続処理などをまとめる
-          │   │
+          │   ├── 📄 utils.ts - shadcn/ui用ユーティリティ（cn関数）
           │   ├── 📁 supabase/
-          │   │   ├── 📄 client.ts
-          │   │   │   └── ブラウザ用Supabaseクライアント
-          │   │   │       クライアントコンポーネント（use client）で使う
-          │   │   │       createBrowserClient()で作成
-          │   │   │
-          │   │   └── 📄 server.ts
-          │   │       └── サーバー用Supabaseクライアント
-          │   │           API Route、Server Componentで使う
-          │   │           createServerClient()で作成
-          │   │           Cookieの読み書き設定も含む
-          │   │
+          │   │   ├── 📄 client.ts - ブラウザ用クライアント
+          │   │   └── 📄 server.ts - サーバー用クライアント
           │   └── 📁 line/
-          │       └── 📄 client.ts
-          │           └── LINE Messaging APIクライアント
-          │               createLineClient() - 店舗ごとのトークンでクライアント生成
-          │               pushFlexMessage() - 特定ユーザーにFlex Message送信
-          │               broadcastFlexMessage() - 全友だちにFlex Message配信
-          │               エラーハンドリング、X-Line-Request-Idログ出力も含む
+          │       └── 📄 client.ts - LINE Messaging APIクライアント
           │
           └── 📁 types/
-              └── 📄 index.ts
-                  └── TypeScript型定義
-                      Store, Template, Media, StoreMediaUrl, BroadcastJob
-                      - DBテーブルに対応した型
-                      CreateStoreRequest, UpdateStoreRequest など
-                      - APIリクエスト/レスポンスの型
-                      ApiResponse<T> - 共通レスポンス型
-
-    planned_additions: |
-      【次に追加予定のファイル・フォルダ】
-
-      src/
-      ├── 📁 components/
-      │   └── UIコンポーネント置き場
-      │   │
-      │   ├── 📁 ui/
-      │   │   └── shadcn/uiのコンポーネント
-      │   │       Button, Card, Dialog, Form, Input, Table など
-      │   │       npx shadcn add xxx で自動生成される
-      │   │
-      │   └── 📁 layout/
-      │       └── レイアウト系コンポーネント
-      │           Header, Sidebar, Footer など
-      │
-      └── 📁 app/
-          └── 📁 (dashboard)/
-              └── ダッシュボード系ページをグルーピング
-                  () = Route Group。URLには影響しない
-                  共通レイアウトを適用するために使う
-              │
-              ├── 📄 layout.tsx - ダッシュボード共通レイアウト（サイドバー等）
-              ├── 📄 page.tsx - ダッシュボードトップ（/）
-              ├── 📁 stores/page.tsx - 店舗管理画面（/stores）
-              ├── 📁 templates/page.tsx - テンプレート管理画面（/templates）
-              ├── 📁 media/page.tsx - 媒体管理画面（/media）
-              ├── 📁 store-media-urls/page.tsx - 店舗×媒体URL画面（/store-media-urls）
-              └── 📁 broadcast/page.tsx - 配信作成画面（/broadcast）
+              └── 📄 index.ts - TypeScript型定義
 
     files:
       - path: ".env.local"
-        purpose: "環境変数（Supabase、LINE認証情報）"
+        purpose: "環境変数（Supabase、LINE、QStash認証情報）"
         note: "Git管理外、本番はVercelで設定"
 
       - path: "src/lib/supabase/client.ts"
@@ -460,46 +503,52 @@ workflow:
         purpose: "サーバー用Supabaseクライアント"
 
       - path: "src/lib/line/client.ts"
-        purpose: "LINE Messaging APIクライアント"
+        purpose: "LINE Messaging APIクライアント（pushFlexMessage, broadcastFlexMessage）"
+
+      - path: "src/lib/utils.ts"
+        purpose: "shadcn/ui用ユーティリティ（cn関数）"
 
       - path: "src/types/index.ts"
-        purpose: "TypeScript型定義"
+        purpose: "TypeScript型定義（DB型、API型、ScheduleBroadcastRequest等）"
 
-      - path: "src/app/api/health/route.ts"
-        purpose: "ヘルスチェック・DB接続確認"
+      - path: "src/hooks/use-toast.ts"
+        purpose: "トースト通知用カスタムフック"
 
-      - path: "src/app/api/stores/route.ts"
-        purpose: "店舗一覧・新規登録API"
+      - path: "src/components/layout/sidebar.tsx"
+        purpose: "サイドバーナビゲーション"
 
-      - path: "src/app/api/stores/[id]/route.ts"
-        purpose: "店舗詳細・更新・削除API"
+      - path: "src/components/ui/*.tsx"
+        purpose: "shadcn/uiコンポーネント群"
 
-      - path: "src/app/api/templates/route.ts"
-        purpose: "テンプレート一覧・新規登録API"
+      - path: "src/app/(dashboard)/layout.tsx"
+        purpose: "ダッシュボード共通レイアウト（サイドバー含む）"
 
-      - path: "src/app/api/templates/[id]/route.ts"
-        purpose: "テンプレート詳細・更新・削除API"
+      - path: "src/app/(dashboard)/page.tsx"
+        purpose: "ダッシュボードトップ画面"
 
-      - path: "src/app/api/media/route.ts"
-        purpose: "媒体一覧・新規登録API"
+      - path: "src/app/(dashboard)/stores/page.tsx"
+        purpose: "店舗管理画面（CRUD）"
 
-      - path: "src/app/api/media/[id]/route.ts"
-        purpose: "媒体削除API"
+      - path: "src/app/(dashboard)/templates/page.tsx"
+        purpose: "テンプレート管理画面（CRUD）"
 
-      - path: "src/app/api/store-media-urls/route.ts"
-        purpose: "店舗×媒体URL一覧・登録API"
+      - path: "src/app/(dashboard)/media/page.tsx"
+        purpose: "媒体管理画面（CRUD）"
 
-      - path: "src/app/api/store-media-urls/[id]/route.ts"
-        purpose: "店舗×媒体URL削除API"
+      - path: "src/app/(dashboard)/store-media-urls/page.tsx"
+        purpose: "店舗×媒体URL管理画面（CRUD）"
 
-      - path: "src/app/api/broadcast/create/route.ts"
-        purpose: "一括配信実行API（コア機能）"
+      - path: "src/app/(dashboard)/broadcast/page.tsx"
+        purpose: "配信作成画面（テスト配信・日時指定配信）"
 
-      - path: "src/app/api/broadcast/jobs/route.ts"
-        purpose: "配信履歴一覧API"
+      - path: "src/app/api/broadcast/test/route.ts"
+        purpose: "テスト配信API（pushMessageで自分だけに送信）"
 
-      - path: "src/app/api/broadcast/jobs/[id]/route.ts"
-        purpose: "配信詳細API"
+      - path: "src/app/api/broadcast/schedule/route.ts"
+        purpose: "日時指定配信スケジュールAPI（QStash連携）"
+
+      - path: "src/app/api/broadcast/execute/route.ts"
+        purpose: "配信実行API（QStashから呼び出される）"
 
   # =====================================
   # 5. 注意点・ハマったこと
@@ -514,6 +563,8 @@ workflow:
       - "Supabaseの1000件制限に注意（ページネーション必要）"
       - "セッション終了時はWORKFLOW.yamlを必ず更新"
       - "[id]フォルダ名は角括弧を含める（Next.js動的ルート）"
+      - "日時指定配信はlocalhost環境では動作しない（本番URL必要）"
+      - "QStashの署名検証はverifySignatureAppRouterでラップする"
 
     troubles_encountered:
       - issue: "create-next-app@16でESLint依存関係エラー"
@@ -528,6 +579,14 @@ workflow:
         solution: "実行時には問題ないため一旦無視。必要なら型アサーションで対応"
         date: "2026-01-10"
 
+      - issue: "npm run devが起動しない"
+        solution: "rm -rf node_modules .next && npm install && npm run dev で解決"
+        date: "2026-01-12"
+
+      - issue: "GitHubへのpushで認証エラー（Password authentication not supported）"
+        solution: "GitHub CLI（gh auth login）で認証"
+        date: "2026-01-12"
+
   # =====================================
   # 6. 環境情報
   # =====================================
@@ -537,7 +596,7 @@ workflow:
       node_version: "v18以上"
       package_manager: "npm"
       dev_server: "http://localhost:3000"
-      project_path: "~/Desktop/line-tool"
+      project_path: "~/Desktop/output/APPS/line-tool"
 
     services:
       supabase:
@@ -548,7 +607,7 @@ workflow:
           - "templates"
           - "media"
           - "store_media_urls"
-          - "broadcast_jobs"
+          - "broadcast_jobs（scheduled_at, qstash_message_id追加済み）"
 
       line:
         provider_created: true
@@ -556,14 +615,21 @@ workflow:
         access_token_issued: true
         webhook_enabled: true
         response_message_disabled: true
+        test_user_id: "Ue07e70dd775584814771e66b3ea07f0c"
+
+      upstash:
+        qstash_configured: true
+        purpose: "日時指定配信のスケジューリング"
 
       github:
-        connected: false
-        note: "次回セッションでリポジトリ作成・push予定"
+        connected: true
+        repository: "m-hiro1013/line-tool"
+        visibility: "private"
 
       vercel:
-        connected: false
-        note: "デプロイ時に設定"
+        connected: true
+        status: "deploying"
+        note: "デプロイ完了後、NEXT_PUBLIC_APP_URLを設定"
 
   # =====================================
   # 7. 更新履歴
@@ -589,3 +655,19 @@ workflow:
         - "✅ 一括配信API完了（/api/broadcast/create）"
         - "✅ 配信履歴API完了（/api/broadcast/jobs）"
         - "📝 WORKFLOW.yaml更新（ファイル構成に詳細解説追加）"
+
+    - date: "2026-01-12"
+      changes:
+        - "✅ shadcn/ui初期化・コンポーネント追加"
+        - "✅ 管理画面（フロントエンド）全画面実装完了"
+        - "✅ テスト配信API実装（/api/broadcast/test）"
+        - "✅ 日時指定配信API実装（/api/broadcast/schedule, /api/broadcast/execute）"
+        - "✅ Upstash QStash導入"
+        - "✅ broadcast_jobsテーブルにscheduled_at, qstash_message_idカラム追加"
+        - "✅ 型定義更新（ScheduleBroadcastRequest等追加）"
+        - "✅ テスト配信動作確認完了"
+        - "✅ GitHub CLI導入・認証完了"
+        - "✅ GitHubリポジトリにpush完了"
+        - "🚀 Vercelデプロイ開始"
+        - "📝 DATABASE.md更新（カラム追加反映）"
+        - "📝 WORKFLOW.yaml更新（今回のセッション内容反映）"
