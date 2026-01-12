@@ -2,7 +2,6 @@
 // Flex Message一括生成・配信API🔥
 
 import { NextRequest, NextResponse } from 'next/server'
-import { FlexContainer } from '@line/bot-sdk'
 import { createClient } from '@/lib/supabase/server'
 import { createLineClient, broadcastFlexMessage } from '@/lib/line/client'
 import { CreateBroadcastRequest, BroadcastResult } from '@/types'
@@ -11,7 +10,7 @@ import { CreateBroadcastRequest, BroadcastResult } from '@/types'
 function replaceVariables(
     jsonContent: object,
     variables: Record<string, string>
-): FlexContainer {
+): object {
     const jsonString = JSON.stringify(jsonContent)
 
     let replacedString = jsonString
@@ -20,7 +19,7 @@ function replaceVariables(
         replacedString = replacedString.split(placeholder).join(value)
     }
 
-    return JSON.parse(replacedString) as FlexContainer
+    return JSON.parse(replacedString)
 }
 
 // POST: 一括配信実行

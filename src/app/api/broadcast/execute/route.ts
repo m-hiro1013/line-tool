@@ -3,7 +3,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySignatureAppRouter } from '@upstash/qstash/nextjs'
-import { FlexContainer } from '@line/bot-sdk'
 import { createClient } from '@/lib/supabase/server'
 import { createLineClient, broadcastFlexMessage } from '@/lib/line/client'
 
@@ -11,7 +10,7 @@ import { createLineClient, broadcastFlexMessage } from '@/lib/line/client'
 function replaceVariables(
     jsonContent: object,
     variables: Record<string, string>
-): FlexContainer {
+): object {
     const jsonString = JSON.stringify(jsonContent)
 
     let replacedString = jsonString
@@ -20,7 +19,7 @@ function replaceVariables(
         replacedString = replacedString.split(placeholder).join(value)
     }
 
-    return JSON.parse(replacedString) as FlexContainer
+    return JSON.parse(replacedString)
 }
 
 // 配信実行処理

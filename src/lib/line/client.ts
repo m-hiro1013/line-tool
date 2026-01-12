@@ -1,7 +1,7 @@
 // src/lib/line/client.ts
 // LINE Messaging APIクライアント🔥
 
-import { messagingApi, HTTPFetchError, FlexContainer } from '@line/bot-sdk'
+import { messagingApi, HTTPFetchError } from '@line/bot-sdk'
 
 // 店舗ごとのアクセストークンでクライアントを生成
 export function createLineClient(channelAccessToken: string) {
@@ -14,7 +14,7 @@ export function createLineClient(channelAccessToken: string) {
 export async function pushFlexMessage(
     client: messagingApi.MessagingApiClient,
     to: string,
-    flexContent: FlexContainer,
+    flexContent: unknown,
     altText: string = '新しいメッセージが届きました'
 ) {
     try {
@@ -24,7 +24,7 @@ export async function pushFlexMessage(
                 {
                     type: 'flex',
                     altText,
-                    contents: flexContent,
+                    contents: flexContent as messagingApi.FlexContainer,
                 },
             ],
         })
@@ -47,7 +47,7 @@ export async function pushFlexMessage(
 // ブロードキャスト（全友だちに送信）
 export async function broadcastFlexMessage(
     client: messagingApi.MessagingApiClient,
-    flexContent: FlexContainer,
+    flexContent: unknown,
     altText: string = '新しいメッセージが届きました'
 ) {
     try {
@@ -56,7 +56,7 @@ export async function broadcastFlexMessage(
                 {
                     type: 'flex',
                     altText,
-                    contents: flexContent,
+                    contents: flexContent as messagingApi.FlexContainer,
                 },
             ],
         })

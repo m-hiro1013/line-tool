@@ -2,7 +2,6 @@
 // テスト配信API（自分だけに送信）🔥
 
 import { NextRequest, NextResponse } from 'next/server'
-import { FlexContainer } from '@line/bot-sdk'
 import { createClient } from '@/lib/supabase/server'
 import { createLineClient, pushFlexMessage } from '@/lib/line/client'
 
@@ -10,7 +9,7 @@ import { createLineClient, pushFlexMessage } from '@/lib/line/client'
 function replaceVariables(
   jsonContent: object,
   variables: Record<string, string>
-): FlexContainer {
+): object {
   const jsonString = JSON.stringify(jsonContent)
 
   let replacedString = jsonString
@@ -19,7 +18,7 @@ function replaceVariables(
     replacedString = replacedString.split(placeholder).join(value)
   }
 
-  return JSON.parse(replacedString) as FlexContainer
+  return JSON.parse(replacedString)
 }
 
 // POST: テスト配信（特定ユーザーに送信）
